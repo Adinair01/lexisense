@@ -214,22 +214,27 @@ def get_stats():
         total_documents = Document.query.count()
         total_chunks = DocumentChunk.query.count()
         
-        # Check OpenAI API status
-        openai_status = "available"
+        # Check Gemini API status
+        gemini_status = "available"
         try:
-            test_embedding = embedding_service.generate_embedding("test")
-            if test_embedding is None:
-                openai_status = "quota_exceeded"
-        except Exception as e:
-            if "insufficient_quota" in str(e) or "429" in str(e):
-                openai_status = "quota_exceeded"
+            # Test Gemini API availability
+            from query_analyzer import QueryAnalyzer
+            analyzer = QueryAnalyzer()
+            if analyzer.client:
+                gemini_status = "available"
             else:
-                openai_status = "error"
+                gemini_status = "error"
+        except Exception as e:
+            if "quota" in str(e).lower() or "429" in str(e):
+                gemini_status = "quota_exceeded"
+            else:
+                gemini_status = "error"
         
         stats.update({
             "total_documents": total_documents,
             "total_chunks_db": total_chunks,
-            "openai_status": openai_status
+            "gemini_status": gemini_status,
+            "openai_status": "quota_exceeded"  # Keep for frontend compatibility
         })
         
         return jsonify(stats)

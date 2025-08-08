@@ -3,7 +3,8 @@ import json
 import logging
 import re
 from typing import Dict, List, Any, Optional, Tuple
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from models import DocumentChunk, Document, Query
 from embedding_service import EmbeddingService
 from app import db
@@ -14,11 +15,11 @@ class QueryAnalyzer:
     """Analyzes queries and generates structured responses"""
     
     def __init__(self):
-        self.openai_api_key = os.environ.get("OPENAI_API_KEY")
-        if not self.openai_api_key:
-            logger.warning("OPENAI_API_KEY not found in environment variables")
+        self.gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if not self.gemini_api_key:
+            logger.warning("GEMINI_API_KEY not found in environment variables")
         
-        self.client = OpenAI(api_key=self.openai_api_key) if self.openai_api_key else None
+        self.client = genai.Client(api_key=self.gemini_api_key) if self.gemini_api_key else None
         self.embedding_service = EmbeddingService()
         
         # Domain-specific patterns
@@ -45,7 +46,7 @@ class QueryAnalyzer:
         """Main method to analyze query and return structured response"""
         try:
             if not self.client:
-                return self._create_error_response("OpenAI API not available")
+                return self._create_error_response("Gemini API not available")
             
             # Get document
             document = Document.query.get(document_id)
@@ -81,7 +82,7 @@ class QueryAnalyzer:
             # Detect domain
             domain = self._detect_domain(query_text)
             
-            # Use OpenAI to parse the query
+            # Use Gemini to parse the query
             if not self.client:
                 return {
                     "intent": "general_inquiry",
@@ -102,16 +103,17 @@ class QueryAnalyzer:
             }}
             """
             
-            response = self.client.chat.completions.create(
-                model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": query_text}
+            response = self.client.models.generate_content(
+                model="gemini-2.5-pro",
+                contents=[
+                    types.Content(role="user", parts=[types.Part(text=f"{system_prompt}\n\nUser Query: {query_text}")])
                 ],
-                response_format={"type": "json_object"}
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
             )
             
-            content = response.choices[0].message.content
+            content = response.text
             if content:
                 return json.loads(content)
             else:
@@ -297,7 +299,8 @@ class QueryAnalyzer:
             }}
             """
             
-            user_prompt = f"""
+            full_prompt = f"""{system_prompt}
+            
             Query: {query_text}
             
             Document Context:
@@ -310,27 +313,28 @@ class QueryAnalyzer:
                 return self._create_fallback_response(query_text, relevant_chunks, filename)
             
             try:
-                response = self.client.chat.completions.create(
-                    model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-pro",
+                    contents=[
+                        types.Content(role="user", parts=[types.Part(text=full_prompt)])
                     ],
-                    response_format={"type": "json_object"}
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
                 )
                 
-                content = response.choices[0].message.content
+                content = response.text
                 if content:
                     result = json.loads(content)
                 else:
-                    return self._create_error_response("No response content from OpenAI")
+                    return self._create_error_response("No response content from Gemini")
             except Exception as e:
                 error_msg = str(e)
-                if "insufficient_quota" in error_msg or "429" in error_msg:
-                    logger.warning("OpenAI quota exceeded, using fallback response")
+                if "quota" in error_msg.lower() or "429" in error_msg:
+                    logger.warning("Gemini quota exceeded, using fallback response")
                     return self._create_fallback_response(query_text, relevant_chunks, filename)
                 else:
-                    return self._create_error_response(f"OpenAI API error: {error_msg}")
+                    return self._create_error_response(f"Gemini API error: {error_msg}")
             
             # Enhance source references with our detailed info
             if "source_references" in result:
