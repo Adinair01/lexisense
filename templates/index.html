@@ -3,139 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LLM Document Analysis System</title>
+    <title>✨ AI Document Analysis - Powered by Gemini</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container-fluid">
-        <!-- Header -->
-        <header class="py-3 mb-4 border-bottom">
-            <div class="d-flex align-items-center">
-                <i class="fas fa-file-alt fa-2x text-info me-3"></i>
-                <h1 class="h3 mb-0">LLM Document Analysis System</h1>
-                <div class="ms-auto d-flex align-items-center">
-                    <div id="statusIndicator" class="me-3" style="display: none;">
-                        <span class="badge" id="statusBadge">
-                            <i class="fas fa-circle"></i> <span id="statusText">Checking...</span>
-                        </span>
-                    </div>
-                    <button class="btn btn-outline-secondary" id="statsBtn">
-                        <i class="fas fa-chart-bar"></i> Stats
-                    </button>
-                </div>
-            </div>
-        </header>
-
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-3">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-upload"></i> Upload Document
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <!-- File Upload -->
-                        <div class="mb-3">
-                            <label for="fileUpload" class="form-label">Upload PDF</label>
-                            <input type="file" class="form-control" id="fileUpload" accept=".pdf">
-                            <div class="form-text">Select a PDF file to analyze</div>
+    <!-- Animated Stars Background -->
+    <div class="stars-container">
+        <div class="stars"></div>
+        <div class="stars2"></div>
+        <div class="stars3"></div>
+    </div>
+    
+    <!-- Floating particles -->
+    <div class="floating-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+    <div class="main-content">
+        <div class="container-fluid">
+            <!-- Hero Header -->
+            <header class="hero-header py-4 mb-5">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="logo-container me-3">
+                            <i class="fas fa-brain fa-2x text-gradient"></i>
                         </div>
-
-                        <!-- URL Input -->
-                        <div class="mb-3">
-                            <label for="documentUrl" class="form-label">Or enter PDF URL</label>
-                            <input type="url" class="form-control" id="documentUrl" placeholder="https://example.com/document.pdf">
+                        <div>
+                            <h1 class="hero-title mb-1">AI Document Analyzer</h1>
+                            <p class="hero-subtitle mb-0">✨ Powered by Gemini AI - Extract Intelligence from PDFs</p>
                         </div>
-
-                        <button type="button" class="btn btn-primary w-100" id="uploadBtn">
-                            <i class="fas fa-cloud-upload-alt"></i> Process Document
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div id="statusIndicator" class="status-badge" style="display: none;">
+                            <span class="badge status-pill" id="statusBadge">
+                                <i class="fas fa-circle pulse"></i> <span id="statusText">Checking...</span>
+                            </span>
+                        </div>
+                        <button class="btn btn-glass" id="statsBtn">
+                            <i class="fas fa-chart-line me-2"></i> Analytics
                         </button>
                     </div>
                 </div>
+            </header>
 
-                <!-- Documents List -->
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-folder"></i> Documents
-                        </h5>
-                    </div>
-                    <div class="card-body p-0">
-                        <div id="documentsList" class="list-group list-group-flush">
-                            <!-- Documents will be loaded here -->
+            <div class="row g-4">
+                <!-- Sidebar -->
+                <div class="col-lg-4">
+                    <!-- Upload Section -->
+                    <div class="glass-card upload-section">
+                        <div class="card-header-glass">
+                            <h5 class="section-title">
+                                <i class="fas fa-cloud-upload gradient-icon me-2"></i>
+                                Upload Document
+                            </h5>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Content -->
-            <div class="col-md-9">
-                <!-- Query Interface -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-search"></i> Query Interface
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="queryInput" class="form-label">Enter your question</label>
-                            <textarea class="form-control" id="queryInput" rows="3" 
-                                placeholder="Example: Does this policy cover knee surgery, and what are the conditions?"></textarea>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="selectedDocument" class="form-label">Selected Document</label>
-                                <select class="form-select" id="selectedDocument">
-                                    <option value="">Select a document...</option>
-                                </select>
+                        <div class="card-body-glass">
+                            <!-- Drag & Drop Area -->
+                            <div class="upload-dropzone mb-4">
+                                <div class="upload-icon">
+                                    <i class="fas fa-file-pdf fa-3x mb-3"></i>
+                                </div>
+                                <h6 class="upload-text">Drag & Drop PDF Here</h6>
+                                <p class="upload-subtext mb-3">or click to browse</p>
+                                <input type="file" class="file-input" id="fileUpload" accept=".pdf">
                             </div>
-                            <div class="col-md-6 d-flex align-items-end">
-                                <button type="button" class="btn btn-success" id="queryBtn">
-                                    <i class="fas fa-search"></i> Analyze Query
-                                </button>
+
+                            <div class="divider-text">
+                                <span>OR</span>
+                            </div>
+
+                            <!-- URL Input -->
+                            <div class="mb-4">
+                                <label for="documentUrl" class="form-label-modern">PDF URL</label>
+                                <div class="input-group-modern">
+                                    <i class="fas fa-link"></i>
+                                    <input type="url" class="form-control-modern" id="documentUrl" placeholder="https://example.com/document.pdf">
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-gradient w-100" id="uploadBtn">
+                                <i class="fas fa-magic me-2"></i> Process with AI
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Documents Library -->
+                    <div class="glass-card mt-4">
+                        <div class="card-header-glass">
+                            <h5 class="section-title">
+                                <i class="fas fa-library gradient-icon me-2"></i>
+                                Document Library
+                            </h5>
+                        </div>
+                        <div class="card-body-glass p-0">
+                            <div id="documentsList" class="documents-list">
+                                <!-- Documents will be loaded here -->
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Results -->
-                <div class="card mt-3" id="resultsCard" style="display: none;">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-brain"></i> Analysis Results
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="resultsContent">
-                            <!-- Results will be displayed here -->
+                <!-- Main Query Section -->
+                <div class="col-lg-8">
+                    <!-- AI Query Interface -->
+                    <div class="glass-card query-section">
+                        <div class="card-header-glass">
+                            <h5 class="section-title">
+                                <i class="fas fa-robot gradient-icon me-2"></i>
+                                AI Query Interface
+                            </h5>
+                        </div>
+                        <div class="card-body-glass">
+                            <div class="query-input-container mb-4">
+                                <label for="queryInput" class="form-label-modern mb-3">
+                                    <i class="fas fa-comment-dots me-2"></i>Ask anything about your document
+                                </label>
+                                <div class="query-input-wrapper">
+                                    <textarea class="query-input" id="queryInput" rows="4" 
+                                        placeholder="Example: What are the main features of MindShield? Does this policy cover specific conditions? What are the requirements for...?"></textarea>
+                                    <div class="query-suggestions">
+                                        <div class="suggestion-chip">📋 Policy Coverage</div>
+                                        <div class="suggestion-chip">💰 Pricing Details</div>
+                                        <div class="suggestion-chip">📋 Requirements</div>
+                                        <div class="suggestion-chip">🔍 Features</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-7">
+                                    <label for="selectedDocument" class="form-label-modern">Selected Document</label>
+                                    <div class="select-wrapper">
+                                        <i class="fas fa-file-alt"></i>
+                                        <select class="form-control-modern" id="selectedDocument">
+                                            <option value="">Choose a document to analyze...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <button type="button" class="btn btn-ai-analyze w-100" id="queryBtn">
+                                        <i class="fas fa-brain me-2"></i>
+                                        <span class="btn-text">Analyze with AI</span>
+                                        <div class="ai-sparkles"></div>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Loading Indicator -->
-                <div class="text-center mt-3" id="loadingIndicator" style="display: none;">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                    <!-- AI Analysis Results -->
+                    <div class="glass-card results-section mt-4" id="resultsCard" style="display: none;">
+                        <div class="card-header-glass">
+                            <h5 class="section-title">
+                                <i class="fas fa-lightbulb gradient-icon me-2"></i>
+                                AI Analysis Results
+                            </h5>
+                        </div>
+                        <div class="card-body-glass">
+                            <div id="resultsContent" class="results-content">
+                                <!-- Results will be displayed here -->
+                            </div>
+                        </div>
                     </div>
-                    <p class="mt-2">Processing your request...</p>
+
+                    <!-- AI Loading Animation -->
+                    <div class="ai-loading-container mt-4" id="loadingIndicator" style="display: none;">
+                        <div class="ai-brain">
+                            <div class="brain-core"></div>
+                            <div class="brain-pulse"></div>
+                            <div class="brain-particles">
+                                <div class="particle"></div>
+                                <div class="particle"></div>
+                                <div class="particle"></div>
+                            </div>
+                        </div>
+                        <div class="loading-text">
+                            <h6>🧠 AI is analyzing your document...</h6>
+                            <p class="loading-steps">
+                                <span class="step active">Reading content</span>
+                                <span class="step">Understanding context</span>
+                                <span class="step">Generating insights</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Stats Modal -->
+    <!-- Enhanced Stats Modal -->
     <div class="modal fade" id="statsModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">System Statistics</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content glass-modal">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">
+                        <i class="fas fa-chart-line gradient-icon me-2"></i>
+                        System Analytics
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="statsContent">
                     <!-- Stats will be loaded here -->
@@ -144,12 +215,57 @@
         </div>
     </div>
 
-    <!-- Toast Container -->
+    <!-- Enhanced Toast Container -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
         <!-- Toasts will be added here -->
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    <script>
+        // Initialize floating animations
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add file upload drag & drop functionality
+            const uploadDropzone = document.querySelector('.upload-dropzone');
+            const fileInput = document.getElementById('fileUpload');
+            
+            uploadDropzone.addEventListener('click', () => fileInput.click());
+            
+            uploadDropzone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadDropzone.classList.add('drag-over');
+            });
+            
+            uploadDropzone.addEventListener('dragleave', () => {
+                uploadDropzone.classList.remove('drag-over');
+            });
+            
+            uploadDropzone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadDropzone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    fileInput.files = e.dataTransfer.files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+            
+            // Animate suggestion chips
+            const suggestions = document.querySelectorAll('.suggestion-chip');
+            suggestions.forEach((chip, index) => {
+                chip.addEventListener('click', function() {
+                    const queryInput = document.getElementById('queryInput');
+                    const examples = {
+                        '📋 Policy Coverage': 'Does this policy cover dental treatments and what are the coverage limits?',
+                        '💰 Pricing Details': 'What are the pricing tiers and what features are included in each plan?',
+                        '📋 Requirements': 'What are the eligibility requirements and application process?',
+                        '🔍 Features': 'What are the main features and capabilities of this system?'
+                    };
+                    queryInput.value = examples[this.textContent] || 'What are the key points in this document?';
+                    queryInput.focus();
+                });
+            });
+        });
+    </script>
 </body>
 </html>
