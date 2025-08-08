@@ -153,46 +153,98 @@ class QueryAnalyzer:
             return "insurance"
     
     def _find_relevant_chunks(self, query_text: str, document_id: int, top_k: int = 10) -> List[Dict[str, Any]]:
-        """Find relevant document chunks using semantic search"""
+        """Find relevant document chunks using semantic search or fallback text search"""
         try:
-            # Get similar chunks using embedding search
+            # Try semantic search first
             similar_chunks = self.embedding_service.search_similar_chunks(query_text, top_k)
             
-            if not similar_chunks:
-                return []
+            if similar_chunks:
+                # Filter chunks for this document and get chunk details
+                relevant_chunks = []
+                chunk_ids = [chunk_id for chunk_id, _ in similar_chunks]
+                
+                chunks = DocumentChunk.query.filter(
+                    DocumentChunk.id.in_(chunk_ids),
+                    DocumentChunk.document_id == document_id
+                ).all()
+                
+                # Create chunk dictionary for easy lookup
+                chunk_dict = {chunk.id: chunk for chunk in chunks}
+                
+                # Build relevant chunks with similarity scores
+                for chunk_id, similarity_score in similar_chunks:
+                    if chunk_id in chunk_dict:
+                        chunk = chunk_dict[chunk_id]
+                        relevant_chunks.append({
+                            "chunk_id": chunk.id,
+                            "content": chunk.content,
+                            "page_number": chunk.page_number,
+                            "similarity_score": similarity_score,
+                            "chunk_index": chunk.chunk_index
+                        })
+                
+                # Sort by similarity score
+                relevant_chunks.sort(key=lambda x: x["similarity_score"], reverse=True)
+                
+                logger.debug(f"Found {len(relevant_chunks)} relevant chunks using embeddings")
+                return relevant_chunks[:5]  # Return top 5 most relevant
             
-            # Filter chunks for this document and get chunk details
-            relevant_chunks = []
-            chunk_ids = [chunk_id for chunk_id, _ in similar_chunks]
-            
-            chunks = DocumentChunk.query.filter(
-                DocumentChunk.id.in_(chunk_ids),
-                DocumentChunk.document_id == document_id
-            ).all()
-            
-            # Create chunk dictionary for easy lookup
-            chunk_dict = {chunk.id: chunk for chunk in chunks}
-            
-            # Build relevant chunks with similarity scores
-            for chunk_id, similarity_score in similar_chunks:
-                if chunk_id in chunk_dict:
-                    chunk = chunk_dict[chunk_id]
-                    relevant_chunks.append({
-                        "chunk_id": chunk.id,
-                        "content": chunk.content,
-                        "page_number": chunk.page_number,
-                        "similarity_score": similarity_score,
-                        "chunk_index": chunk.chunk_index
-                    })
-            
-            # Sort by similarity score
-            relevant_chunks.sort(key=lambda x: x["similarity_score"], reverse=True)
-            
-            logger.debug(f"Found {len(relevant_chunks)} relevant chunks for query")
-            return relevant_chunks[:5]  # Return top 5 most relevant
+            else:
+                # Fallback to simple text search
+                logger.info("Using fallback text search due to embedding unavailability")
+                return self._fallback_text_search(query_text, document_id, top_k)
             
         except Exception as e:
             logger.error(f"Error finding relevant chunks: {str(e)}")
+            # Try fallback text search as last resort
+            return self._fallback_text_search(query_text, document_id, top_k)
+    
+    def _fallback_text_search(self, query_text: str, document_id: int, top_k: int = 5) -> List[Dict[str, Any]]:
+        """Fallback text-based search when embeddings are unavailable"""
+        try:
+            # Get all chunks for this document
+            chunks = DocumentChunk.query.filter_by(document_id=document_id).all()
+            
+            if not chunks:
+                return []
+            
+            # Simple keyword matching
+            query_words = query_text.lower().split()
+            scored_chunks = []
+            
+            for chunk in chunks:
+                content_lower = chunk.content.lower()
+                score = 0
+                
+                # Count keyword matches
+                for word in query_words:
+                    if len(word) > 2:  # Skip very short words
+                        score += content_lower.count(word)
+                
+                # Add partial matches
+                for word in query_words:
+                    if len(word) > 3:
+                        for content_word in content_lower.split():
+                            if word in content_word:
+                                score += 0.5
+                
+                if score > 0:
+                    scored_chunks.append({
+                        "chunk_id": chunk.id,
+                        "content": chunk.content,
+                        "page_number": chunk.page_number,
+                        "similarity_score": score,
+                        "chunk_index": chunk.chunk_index
+                    })
+            
+            # Sort by score (descending)
+            scored_chunks.sort(key=lambda x: x["similarity_score"], reverse=True)
+            
+            logger.debug(f"Found {len(scored_chunks)} relevant chunks using text search")
+            return scored_chunks[:top_k]
+            
+        except Exception as e:
+            logger.error(f"Error in fallback text search: {str(e)}")
             return []
     
     def _generate_structured_response(self, query_text: str, parsed_query: Dict[str, Any], 
@@ -255,22 +307,30 @@ class QueryAnalyzer:
             """
             
             if not self.client:
-                return self._create_error_response("OpenAI client not available")
+                return self._create_fallback_response(query_text, relevant_chunks, filename)
             
-            response = self.client.chat.completions.create(
-                model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                response_format={"type": "json_object"}
-            )
-            
-            content = response.choices[0].message.content
-            if content:
-                result = json.loads(content)
-            else:
-                return self._create_error_response("No response content from OpenAI")
+            try:
+                response = self.client.chat.completions.create(
+                    model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    response_format={"type": "json_object"}
+                )
+                
+                content = response.choices[0].message.content
+                if content:
+                    result = json.loads(content)
+                else:
+                    return self._create_error_response("No response content from OpenAI")
+            except Exception as e:
+                error_msg = str(e)
+                if "insufficient_quota" in error_msg or "429" in error_msg:
+                    logger.warning("OpenAI quota exceeded, using fallback response")
+                    return self._create_fallback_response(query_text, relevant_chunks, filename)
+                else:
+                    return self._create_error_response(f"OpenAI API error: {error_msg}")
             
             # Enhance source references with our detailed info
             if "source_references" in result:
@@ -347,3 +407,57 @@ class QueryAnalyzer:
         except Exception as e:
             logger.error(f"Error getting query history: {str(e)}")
             return []
+    
+    def _create_fallback_response(self, query_text: str, relevant_chunks: List[Dict[str, Any]], filename: str) -> Dict[str, Any]:
+        """Create a basic response when OpenAI is unavailable"""
+        try:
+            if not relevant_chunks:
+                return self._create_no_match_response(query_text)
+            
+            # Simple analysis without LLM
+            decision = "Partially"  # Conservative default
+            conditions = []
+            explanation = f"Found {len(relevant_chunks)} relevant section(s) in the document."
+            
+            # Basic keyword-based analysis
+            query_lower = query_text.lower()
+            combined_content = " ".join([chunk["content"] for chunk in relevant_chunks]).lower()
+            
+            # Check for common patterns
+            if any(word in query_lower for word in ["cover", "include", "eligible", "benefit"]):
+                if any(word in combined_content for word in ["yes", "covered", "included", "eligible"]):
+                    decision = "Yes"
+                elif any(word in combined_content for word in ["no", "not covered", "excluded", "not eligible"]):
+                    decision = "No"
+            
+            # Extract potential conditions from content
+            content_sentences = combined_content.split(".")
+            for sentence in content_sentences[:3]:  # Check first few sentences
+                if any(word in sentence for word in ["require", "must", "need", "condition", "if"]):
+                    clean_sentence = sentence.strip().capitalize()
+                    if len(clean_sentence) > 10 and len(clean_sentence) < 100:
+                        conditions.append(clean_sentence)
+            
+            # Build source references
+            source_references = []
+            for chunk in relevant_chunks[:3]:  # Top 3 chunks
+                source_references.append({
+                    "document": filename,
+                    "page": chunk.get("page_number", 1),
+                    "similarity_score": chunk.get("similarity_score", 0),
+                    "clause": f"Section {chunk.get('chunk_index', 0) + 1}"
+                })
+            
+            return {
+                "query": query_text,
+                "answer": {
+                    "decision": decision,
+                    "conditions": conditions[:3] if conditions else []  # Limit to 3 conditions
+                },
+                "source_references": source_references,
+                "explanation": explanation + " (Analysis limited due to API constraints)"
+            }
+            
+        except Exception as e:
+            logger.error(f"Error creating fallback response: {str(e)}")
+            return self._create_no_match_response(query_text)
