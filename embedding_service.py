@@ -86,7 +86,10 @@ class EmbeddingService:
             return embedding
             
         except Exception as e:
-            logger.error(f"Error generating embedding: {str(e)}")
+            error_message = str(e)
+            logger.error(f"Error generating embedding: {error_message}")
+            if "insufficient_quota" in error_message or "429" in error_message:
+                logger.warning("OpenAI API quota exceeded - embeddings temporarily unavailable")
             return None
     
     def add_chunk_embeddings(self, chunks: List[Tuple[int, str]]) -> bool:
@@ -154,7 +157,10 @@ class EmbeddingService:
             return results
             
         except Exception as e:
-            logger.error(f"Error searching similar chunks: {str(e)}")
+            error_message = str(e)
+            logger.error(f"Error searching similar chunks: {error_message}")
+            if "insufficient_quota" in error_message or "429" in error_message:
+                logger.warning("OpenAI API quota exceeded - search temporarily unavailable")
             return []
     
     def remove_document_embeddings(self, document_id: int) -> bool:

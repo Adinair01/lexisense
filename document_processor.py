@@ -96,10 +96,14 @@ class DocumentProcessor:
             
             return document
             
+        except ValueError as e:
+            db.session.rollback()
+            logger.error(f"PDF validation error: {str(e)}")
+            raise e
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error processing PDF content: {str(e)}")
-            return None
+            raise Exception(f"Document processing failed: {str(e)}")
     
     def _extract_text_from_pdf(self, pdf_content: bytes) -> Tuple[str, List[Tuple[int, int, int]]]:
         """Extract text from PDF and return with page information"""
@@ -128,7 +132,10 @@ class DocumentProcessor:
                     
         except Exception as e:
             logger.error(f"Error extracting text from PDF: {str(e)}")
-            raise
+            if "EOF marker not found" in str(e) or "Invalid PDF" in str(e):
+                raise ValueError("Invalid PDF file format. Please upload a valid PDF document.")
+            else:
+                raise ValueError(f"PDF processing failed: {str(e)}")
         
         return text_content, page_info
     

@@ -50,17 +50,21 @@ def process_query():
         # Process document if URL provided
         if document_url and not document_id:
             processor = DocumentProcessor()
-            document = processor.process_pdf_from_url(document_url)
-            
-            if not document:
-                return jsonify({"error": "Failed to process document from URL"}), 400
+            try:
+                document = processor.process_pdf_from_url(document_url)
+                if not document:
+                    return jsonify({"error": "Failed to process document from URL - no content extracted"}), 400
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
+            except Exception as e:
+                return jsonify({"error": f"URL processing failed: {str(e)}"}), 400
             
             # Add embeddings for the new document
             embedding_service = EmbeddingService()
             chunks = [(chunk.id, chunk.content) for chunk in document.chunks] if document.chunks else []
             
             if not embedding_service.add_chunk_embeddings(chunks):
-                logger.warning(f"Failed to add embeddings for document {document.id}")
+                logger.warning(f"Failed to add embeddings for document {document.id} - document uploaded but search may be limited")
             
             document_id = document.id
         
@@ -99,17 +103,22 @@ def upload_document():
         processor = DocumentProcessor()
         file_data = file.read()
         filename = file.filename or 'uploaded_document.pdf'
-        document = processor.process_pdf_upload(file_data, filename)
         
-        if not document:
-            return jsonify({"error": "Failed to process PDF file"}), 400
+        try:
+            document = processor.process_pdf_upload(file_data, filename)
+            if not document:
+                return jsonify({"error": "Failed to process PDF file - no content extracted"}), 400
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": f"Upload failed: {str(e)}"}), 400
         
         # Add embeddings for the document
         embedding_service = EmbeddingService()
         chunks = [(chunk.id, chunk.content) for chunk in document.chunks] if document.chunks else []
         
         if not embedding_service.add_chunk_embeddings(chunks):
-            logger.warning(f"Failed to add embeddings for document {document.id}")
+            logger.warning(f"Failed to add embeddings for document {document.id} - document uploaded but search may be limited")
         
         return jsonify({
             "document_id": document.id,
@@ -205,9 +214,22 @@ def get_stats():
         total_documents = Document.query.count()
         total_chunks = DocumentChunk.query.count()
         
+        # Check OpenAI API status
+        openai_status = "available"
+        try:
+            test_embedding = embedding_service.generate_embedding("test")
+            if test_embedding is None:
+                openai_status = "quota_exceeded"
+        except Exception as e:
+            if "insufficient_quota" in str(e) or "429" in str(e):
+                openai_status = "quota_exceeded"
+            else:
+                openai_status = "error"
+        
         stats.update({
             "total_documents": total_documents,
-            "total_chunks_db": total_chunks
+            "total_chunks_db": total_chunks,
+            "openai_status": openai_status
         })
         
         return jsonify(stats)

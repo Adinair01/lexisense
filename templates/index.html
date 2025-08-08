@@ -15,7 +15,12 @@
             <div class="d-flex align-items-center">
                 <i class="fas fa-file-alt fa-2x text-info me-3"></i>
                 <h1 class="h3 mb-0">LLM Document Analysis System</h1>
-                <div class="ms-auto">
+                <div class="ms-auto d-flex align-items-center">
+                    <div id="statusIndicator" class="me-3" style="display: none;">
+                        <span class="badge" id="statusBadge">
+                            <i class="fas fa-circle"></i> <span id="statusText">Checking...</span>
+                        </span>
+                    </div>
                     <button class="btn btn-outline-secondary" id="statsBtn">
                         <i class="fas fa-chart-bar"></i> Stats
                     </button>

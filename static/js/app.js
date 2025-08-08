@@ -8,6 +8,7 @@ class DocumentAnalysisApp {
         
         this.initializeEventListeners();
         this.loadDocuments();
+        this.checkSystemStatus();
     }
 
     initializeEventListeners() {
@@ -98,6 +99,40 @@ class DocumentAnalysisApp {
         } catch (error) {
             this.showToast('Failed to load documents', 'error');
             console.error('Error loading documents:', error);
+        }
+    }
+
+    async checkSystemStatus() {
+        try {
+            const stats = await this.makeApiRequest('/api/v1/stats');
+            this.updateStatusIndicator(stats.openai_status);
+        } catch (error) {
+            this.updateStatusIndicator('error');
+            console.error('Error checking system status:', error);
+        }
+    }
+
+    updateStatusIndicator(status) {
+        const indicator = document.getElementById('statusIndicator');
+        const badge = document.getElementById('statusBadge');
+        const text = document.getElementById('statusText');
+        
+        indicator.style.display = 'block';
+        
+        switch(status) {
+            case 'available':
+                badge.className = 'badge bg-success';
+                text.textContent = 'API Ready';
+                break;
+            case 'quota_exceeded':
+                badge.className = 'badge bg-warning text-dark';
+                text.textContent = 'Quota Exceeded';
+                break;
+            case 'error':
+            default:
+                badge.className = 'badge bg-danger';
+                text.textContent = 'API Error';
+                break;
         }
     }
 
@@ -217,7 +252,13 @@ class DocumentAnalysisApp {
             }
 
         } catch (error) {
-            this.showToast(`Upload failed: ${error.message}`, 'error');
+            let errorMessage = error.message;
+            if (errorMessage.includes('Invalid PDF file format')) {
+                errorMessage = 'Please upload a valid PDF file. The selected file is not a proper PDF document.';
+            } else if (errorMessage.includes('quota')) {
+                errorMessage = 'OpenAI API quota exceeded. Please try again later or check your API billing.';
+            }
+            this.showToast(`Upload failed: ${errorMessage}`, 'error');
         } finally {
             uploadBtn.disabled = false;
             uploadBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Process Document';
@@ -259,7 +300,11 @@ class DocumentAnalysisApp {
             this.showToast('Query analyzed successfully!', 'success');
 
         } catch (error) {
-            this.showToast(`Query failed: ${error.message}`, 'error');
+            let errorMessage = error.message;
+            if (errorMessage.includes('quota')) {
+                errorMessage = 'OpenAI API quota exceeded. Document analysis is temporarily unavailable.';
+            }
+            this.showToast(`Query failed: ${errorMessage}`, 'error');
             this.hideResults();
         } finally {
             queryBtn.disabled = false;
@@ -373,6 +418,11 @@ class DocumentAnalysisApp {
         try {
             const stats = await this.makeApiRequest('/api/v1/stats');
             
+            const openaiStatusClass = stats.openai_status === 'available' ? 'text-success' : 
+                                      stats.openai_status === 'quota_exceeded' ? 'text-warning' : 'text-danger';
+            const openaiStatusText = stats.openai_status === 'available' ? 'Available' : 
+                                    stats.openai_status === 'quota_exceeded' ? 'Quota Exceeded' : 'Error';
+            
             const statsContent = document.getElementById('statsContent');
             statsContent.innerHTML = `
                 <div class="row">
@@ -400,6 +450,15 @@ class DocumentAnalysisApp {
                             <div class="stat-label">Dimensions</div>
                         </div>
                     </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>OpenAI API Status</h6>
+                    <span class="badge ${openaiStatusClass}">${openaiStatusText}</span>
+                    ${stats.openai_status === 'quota_exceeded' ? 
+                        '<p class="text-warning mt-2"><small>⚠️ API quota exceeded. Document analysis features may be limited until quota resets.</small></p>' : 
+                        ''
+                    }
                 </div>
                 
                 <div class="mt-3">
