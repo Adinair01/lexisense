@@ -109,7 +109,9 @@ class DocumentAnalysisApp {
     async checkSystemStatus() {
         try {
             const stats = await this.makeApiRequest('/api/v1/stats');
-            this.updateStatusIndicator(stats.openai_status);
+            // Use gemini_status if available, otherwise fallback to available
+            const status = stats.gemini_status || 'available';
+            this.updateStatusIndicator(status);
         } catch (error) {
             this.updateStatusIndicator('error');
             console.error('Error checking system status:', error);
@@ -121,21 +123,23 @@ class DocumentAnalysisApp {
         const badge = document.getElementById('statusBadge');
         const text = document.getElementById('statusText');
         
+        // Only show status for available or error, hide quota exceeded
+        if (status === 'quota_exceeded') {
+            indicator.style.display = 'none';
+            return;
+        }
+        
         indicator.style.display = 'block';
         
         switch(status) {
             case 'available':
-                badge.className = 'badge bg-success';
-                text.textContent = 'API Ready';
-                break;
-            case 'quota_exceeded':
-                badge.className = 'badge bg-warning text-dark';
-                text.textContent = 'Quota Exceeded';
+                badge.className = 'badge status-pill bg-success';
+                text.textContent = 'AI Ready';
                 break;
             case 'error':
             default:
-                badge.className = 'badge bg-danger';
-                text.textContent = 'API Error';
+                badge.className = 'badge status-pill bg-danger';
+                text.textContent = 'AI Error';
                 break;
         }
     }
@@ -422,10 +426,8 @@ class DocumentAnalysisApp {
         try {
             const stats = await this.makeApiRequest('/api/v1/stats');
             
-            const openaiStatusClass = stats.openai_status === 'available' ? 'text-success' : 
-                                      stats.openai_status === 'quota_exceeded' ? 'text-warning' : 'text-danger';
-            const openaiStatusText = stats.openai_status === 'available' ? 'Available' : 
-                                    stats.openai_status === 'quota_exceeded' ? 'Quota Exceeded' : 'Error';
+            const aiStatusClass = stats.gemini_status === 'available' ? 'text-success' : 'text-danger';
+            const aiStatusText = stats.gemini_status === 'available' ? 'Available' : 'Error';
             
             const statsContent = document.getElementById('statsContent');
             statsContent.innerHTML = `
@@ -444,29 +446,31 @@ class DocumentAnalysisApp {
                     </div>
                     <div class="col-6">
                         <div class="stat-item">
-                            <div class="stat-number">${stats.total_vectors}</div>
-                            <div class="stat-label">Embeddings</div>
+                            <div class="stat-number">${stats.total_chunks}</div>
+                            <div class="stat-label">Analysis Ready</div>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="stat-item">
                             <div class="stat-number">${stats.dimension}</div>
-                            <div class="stat-label">Dimensions</div>
+                            <div class="stat-label">AI Dimensions</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="mt-3">
-                    <h6>OpenAI API Status</h6>
-                    <span class="badge ${openaiStatusClass}">${openaiStatusText}</span>
-                    ${stats.openai_status === 'quota_exceeded' ? 
-                        '<p class="text-warning mt-2"><small>⚠️ API quota exceeded. Document analysis features may be limited until quota resets.</small></p>' : 
-                        ''
+                <div class="mt-4">
+                    <h6><i class="fas fa-brain me-2"></i>LexiSense AI Status</h6>
+                    <span class="badge ${aiStatusClass}">
+                        <i class="fas fa-circle me-1"></i>${aiStatusText}
+                    </span>
+                    ${stats.gemini_status === 'available' ? 
+                        '<p class="text-success mt-2"><small>✅ Advanced AI analysis is fully operational</small></p>' : 
+                        '<p class="text-danger mt-2"><small>❌ AI analysis temporarily unavailable</small></p>'
                     }
                 </div>
                 
-                <div class="mt-3">
-                    <h6>Bearer Token</h6>
+                <div class="mt-4">
+                    <h6><i class="fas fa-key me-2"></i>API Authentication</h6>
                     <code class="bearer-token">${this.bearerToken}</code>
                 </div>
             `;
