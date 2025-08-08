@@ -37,12 +37,26 @@ from api_routes import api_bp
 app.register_blueprint(api_bp, url_prefix='/api/v1')
 
 # Main routes
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, send_file
+import os
 
 @app.route('/')
 def index():
     """Main application interface"""
     return render_template('index.html')
+
+@app.route('/sample-pdf')
+def download_sample_pdf():
+    """Download sample PDF for testing"""
+    try:
+        return send_file(
+            'sample_insurance_policy.pdf',
+            as_attachment=True,
+            download_name='sample_insurance_policy.pdf',
+            mimetype='application/pdf'
+        )
+    except FileNotFoundError:
+        return jsonify({"error": "Sample file not found"}), 404
 
 with app.app_context():
     # Import models to ensure tables are created

@@ -51,10 +51,14 @@ class DocumentAnalysisApp {
         try {
             const defaultOptions = {
                 headers: {
-                    'Authorization': `Bearer ${this.bearerToken}`,
-                    'Content-Type': 'application/json'
+                    'Authorization': `Bearer ${this.bearerToken}`
                 }
             };
+
+            // Only set Content-Type for JSON requests, not for FormData uploads
+            if (!(options.body instanceof FormData)) {
+                defaultOptions.headers['Content-Type'] = 'application/json';
+            }
 
             console.log('Making API request to:', url);
             
