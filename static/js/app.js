@@ -55,6 +55,8 @@ class DocumentAnalysisApp {
                 }
             };
 
+            console.log('Making API request to:', url);
+            
             const response = await fetch(url, {
                 ...defaultOptions,
                 ...options,
@@ -64,14 +66,25 @@ class DocumentAnalysisApp {
                 }
             });
 
+            console.log('Response status:', response.status);
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                console.error('API error response:', errorData);
                 throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
             }
 
-            return await response.json();
+            const result = await response.json();
+            console.log('API response:', result);
+            return result;
         } catch (error) {
             console.error('API request failed:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                url: url,
+                options: options
+            });
             throw error;
         }
     }
